@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fashion Accounts — Escalation Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --dsv-pale:#5b9aed;--dsv-blue:#0a3d8f;--dsv-ghost:#0e1e40;
+            --bg:#080e1c;--surface:#0d1629;--surface2:#111f38;
+            --border:rgba(52,120,212,0.12);--border2:rgba(52,120,212,0.22);
+            --text:#d6e4ff;--muted:rgba(214,228,255,0.42);
+            --red:#e05c5c;--red-bg:rgba(224,92,92,0.08);--red-border:rgba(224,92,92,0.28);
+            --yellow:#f0c040;--yellow-bg:rgba(240,192,64,0.08);--yellow-border:rgba(240,192,64,0.28);
+            --green:#4ec994;--green-bg:rgba(78,201,148,0.08);--green-border:rgba(78,201,148,0.25);
+            --violet:#a855f7;--violet-bg:rgba(168,85,247,0.10);--violet-border:rgba(168,85,247,0.30);
+            --mult-c:#c084f5;--mult-bg:rgba(192,132,245,0.08);--mult-border:rgba(192,132,245,0.22);
+            --cli-c:#f0c040;
+        }
+
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+        
+        /* GRID DE FUNDO */
+        body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(26,92,191,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(26,92,191,0.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+
+        /* TELA DE UPLOAD */
+        #upload-section {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; width: 100%; position: relative; z-index: 10;
+        }
+        .upload-card {
+            background: var(--surface); border: 1px solid var(--border2); padding: 40px;
+            border-radius: 20px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            max-width: 450px; width: 90%;
+        }
+        .upload-card h1 { font-family: 'DM Mono', monospace; font-size: 18px; margin-bottom: 10px; color: var(--dsv-pale); }
+        .upload-card p { font-size: 14px; color: var(--muted); margin-bottom: 30px; }
+        .btn-input {
+            background: var(--dsv-blue); color: white; padding: 12px 24px; border-radius: 8px;
+            cursor: pointer; font-weight: 600; display: inline-block; transition: all 0.3s;
+            border: 1px solid var(--dsv-pale);
+        }
+        .btn-input:hover { background: var(--dsv-pale); color: var(--dsv-ghost); }
+        #excel-file { display: none; }
+
+        /* PAINEL (Escondido inicialmente) */
+        #main-dashboard { display: none; }
+
+        /* REAPROVEITAMENTO DE ESTILOS DO SEU CÓDIGO ORIGINAL */
+        .nav-bar{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border2);padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:16px; height: 60px;}
+        .logo{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--dsv-pale);letter-spacing:2px;text-transform:uppercase}
+        .logo-sub{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+        .nav-tabs{display:flex;gap:2px;padding:10px 0}
+        .nav-btn{background:transparent;border:1px solid transparent;color:var(--muted);padding:7px 16px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .2s}
+        .nav-btn.active{background:var(--dsv-blue);color:#fff;border-color:rgba(91,154,237,0.3)}
+        .header-pills{display:flex;gap:6px}
+        .sp{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid}
+        .sp.red{color:var(--red);border-color:var(--red-border);background:var(--red-bg)}
+        .sp.yellow{color:var(--yellow);border-color:var(--yellow-border);background:var(--yellow-bg)}
+        .sp.green{color:var(--green);border-color:var(--green-border);background:var(--green-bg)}
+        .sp.violet{color:var(--violet);border-color:var(--violet-border);background:var(--violet-bg)}
+        .sp .dot{width:6px;height:6px;border-radius:50%}
+        .sp.red .dot{background:var(--red);box-shadow:0 0 5px var(--red)}
+        .sp.yellow .dot{background:var(--yellow);box-shadow:0 0 5px var(--yellow)}
+        .sp.green .dot{background:var(--green);box-shadow:0 0 5px var(--green)}
+        .sp.violet .dot{background:var(--violet);box-shadow:0 0 5px var(--violet)}
+
+        /* TIMELINE */
+        .tl-strip{background:var(--dsv-ghost);border-bottom:1px solid var(--border2);padding:0 32px;overflow-x:auto}
+        .tl-inner{display:flex;align-items:stretch;min-width:max-content;position:relative}
+        .tl-inner::before{content:'';position:absolute;top:34px;left:0;right:0;height:1px;background:var(--border2);z-index:0}
+        .tl-node{display:flex;flex-direction:column;align-items:center;padding:12px 32px;position:relative;z-index:1;gap:3px}
+        .tl-time{font-family:'DM Mono',monospace;font-size:9px;font-weight:600;white-space:nowrap}
+        .tl-time.done{color:var(--dsv-pale)}.tl-time.active{color:var(--green)}.tl-time.pending{color:var(--muted)}
+        .tl-dot{width:10px;height:10px;border-radius:50%;border:2px solid;background:var(--bg)}
+        .tl-dot.done{background:var(--dsv-blue);border-color:var(--dsv-pale)}
+        .tl-dot.active{width:13px;height:13px;background:var(--green);border-color:var(--green);box-shadow:0 0 10px var(--green)}
+        .tl-dot.pending{border-color:rgba(52,120,212,0.25)}
+        .tl-label{font-size:9px;text-align:center;line-height:1.3;white-space:nowrap}
+        .tl-label.done{color:rgba(214,228,255,0.6)}.tl-label.active{color:var(--green)}.tl-label.pending{color:var(--muted);opacity:.35}
+        .tl-badge{font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid;white-space:nowrap}
+        .tl-badge.done{color:var(--dsv-pale);background:rgba(91,154,237,0.07);border-color:rgba(91,154,237,0.18)}
+        .tl-badge.active{color:var(--green);background:var(--green-bg);border-color:var(--green-border)}
+        .tl-badge.pending{color:var(--muted);background:transparent;border-color:rgba(52,120,212,0.15);opacity:.35}
+        .tl-delta{font-family:'DM Mono',monospace;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid}
+        .tl-delta.down{color:var(--green);background:var(--green-bg);border-color:var(--green-border)}
+        .tl-delta.up{color:var(--red);background:var(--red-bg);border-color:var(--red-border)}
+        .tl-delta.same{color:var(--muted);background:transparent;border-color:var(--border)}
+
+        /* SUMMARY */
+        .summary-bar{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--border2);background:var(--dsv-ghost)}
+        .sc{padding:15px 18px;border-right:1px solid var(--border);position:relative;overflow:hidden}
+        .sc-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+        .sc-row{display:flex;align-items:baseline;gap:8px}
+        .sc-num{font-family:'DM Mono',monospace;font-size:30px;font-weight:700;line-height:1}
+        .sc.total .sc-num{color:var(--dsv-pale)}.sc.red .sc-num{color:var(--red)}.sc.yellow .sc-num{color:var(--yellow)}.sc.green .sc-num{color:var(--green)}.sc.viol .sc-num{color:var(--violet)}
+        .sc-delta{font-family:'DM Mono',monospace;font-size:11px;font-weight:700}
+        .sc-delta.down{color:var(--green)}.sc-delta.up{color:var(--red)}
+        .sc-sub{margin-top:3px;font-size:10px;color:var(--muted)}
+
+        /* ACCOUNTS */
+        .main{padding:22px 32px;display:flex;flex-direction:column;gap:26px; position: relative; z-index: 5;}
+        .sec-title{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:14px}
+        .accounts-grid{display:flex;flex-direction:column;gap:6px}
+        .ac{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;border-left:3px solid transparent;transition:box-shadow .2s; animation:fadeUp .5s ease both}
+        .ac.red{border-left-color:var(--red)}
+        .ac.yellow{border-left-color:var(--yellow)}
+        .ac.green{border-left-color:var(--green)}
+        .ac.violet{border-left-color:var(--violet)}
+        .ac-header{display:grid;grid-template-columns:200px 1fr 200px 48px;align-items:stretch;cursor:pointer;user-select:none}
+        .ac-name-cell{padding:12px 16px;display:flex;align-items:center;gap:10px;border-right:1px solid var(--border)}
+        .badge{width:27px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;font-weight:700}
+        .badge.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+        .badge.yellow{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
+        .badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+        .badge.violet{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-border)}
+        .ac-name{font-size:14px;font-weight:700;color:var(--text)}
+        .ac-status-line{font-size:10px;color:var(--muted)}
+        .ac-offense-cell{padding:12px 12px;display:flex;align-items:center;flex-wrap:wrap;gap:5px;border-right:1px solid var(--border)}
+        .off-badge{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;border:1px solid;white-space:nowrap}
+        .off-badge.dsv{color:var(--dsv-pale);border-color:rgba(91,154,237,0.3);background:rgba(91,154,237,0.08)}
+        .off-badge.mult{color:var(--mult-c);border-color:var(--mult-border);background:var(--mult-bg)}
+        .off-badge.cli{color:var(--cli-c);border-color:var(--yellow-border);background:var(--yellow-bg)}
+        .ac-count-cell{padding:12px 12px;border-right:1px solid var(--border);display:flex;align-items:center;gap:8px}
+        .count-num{font-family:'DM Mono',monospace;font-size:22px;font-weight:700}
+        .ac-toggle{display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:transform .2s}
+        .ac.open .ac-toggle{transform:rotate(180deg)}
+        .ac-body{display:none;border-top:1px solid var(--border);background:var(--surface2)}
+        .ac.open .ac-body{display:block}
+
+        /* CONTEUDO DO CARD */
+        .kt{margin:0 16px 12px;padding:10px 14px;border-radius:7px;border:1px solid rgba(91,154,237,0.2);background:rgba(10,30,64,0.5)}
+        .kt-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+        .kt-title{font-size:10px;font-weight:700;color:var(--dsv-pale)}
+        .kt-track{flex:1;height:7px;background:rgba(26,92,191,0.15);border-radius:4px;overflow:hidden}
+        .kt-fill{height:100%;border-radius:4px;background:var(--green); transition: width 1s ease-out;}
+        .offense-grid{display:grid;grid-template-columns:1fr 1fr 1fr}
+        .offense-col{border-right:1px solid var(--border)}
+        .offense-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 7px;border-bottom:1px solid var(--border);background:rgba(10,15,30,0.4)}
+        .offense-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+        .status-split{display:grid;grid-template-columns:1fr 1fr;min-height:70px}
+        .status-pane{padding:9px 13px}
+        .status-pane.last{background:rgba(10,12,22,0.6);border-right:1px solid var(--border)}
+        .spl{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600;display:flex;gap:5px;align-items:center}
+        .spl-ref{color:var(--dsv-pale)}
+        .proc-list{list-style:none;display:flex;flex-direction:column;gap:4px}
+        .pi{padding:5px 8px;border-radius:5px;border:1px solid;font-size:11px;line-height:1.4;display:flex;align-items:flex-start;gap:7px}
+        .pi.dsv{border-color:rgba(91,154,237,0.18);background:rgba(91,154,237,0.04);color:rgba(214,228,255,0.78)}
+        .pi.mult{border-color:var(--mult-border);background:var(--mult-bg);color:rgba(192,132,245,0.9)}
+        .pi.cli{border-color:var(--yellow-border);background:var(--yellow-bg);color:rgba(240,192,64,0.9)}
+        .pn{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;flex-shrink:0}
+
+        /* HISTORICO */
+        .page{display:none;animation:fadeUp .4s ease both}
+        .page.active{display:block}
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px}
+        .ht{width:100%;border-collapse:collapse}
+        .ht th{font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);font-weight:500}
+        .ht td{padding:7px 10px;font-size:11px;border-bottom:1px solid var(--border);vertical-align:middle}
+        .htag{font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid}
+        .htag.red{color:var(--red);background:var(--red-bg);border-color:var(--red-border)}
+        .htag.yellow{color:var(--yellow);background:var(--yellow-bg);border-color:var(--yellow-border)}
+        .htag.green{color:var(--green);background:var(--green-bg);border-color:var(--green-border)}
+        .htag.viol{color:var(--violet);background:var(--violet-bg);border-color:var(--violet-border)}
+        .tbar{width:55px;height:4px;background:rgba(26,92,191,0.15);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px}
+        .tb{height:100%;border-radius:2px;transition:width 1s ease}
+
+        footer{position:relative;z-index:10;padding:14px 32px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+        .footer-snap{color:var(--green);font-weight:600}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    </style>
+</head>
+<body>
+
+    <section id="upload-section">
+        <div class="upload-card">
+            <h1>◈ CARREGAR BASE DE DADOS</h1>
+            <p>Selecione o arquivo Excel (.xlsx) para alimentar o Escalation Dashboard.</p>
+            <label for="excel-file" class="btn-input">Selecionar Arquivo</label>
+            <input type="file" id="excel-file" accept=".xlsx, .xls">
+        </div>
+    </section>
+
+    <main id="main-dashboard">
+        <div class="nav-bar">
+            <div><div class="logo">◈ DSV · Fashion Escalation</div><div class="logo-sub">Executive Dashboard</div></div>
+            <div class="nav-tabs">
+                <button class="nav-btn active" onclick="setPage('status',this)">Status Atual</button>
+                <button class="nav-btn" onclick="setPage('history',this)">Histórico & Evolução</button>
+            </div>
+            <div class="header-pills" id="pills-container">
+                </div>
+        </div>
+
+        <div class="tl-strip">
+            <div class="tl-inner" id="timeline-container">
+                </div>
+        </div>
+
+        <div id="page-status" class="page active">
+            <div class="summary-bar" id="summary-container">
+                </div>
+            <div class="main">
+                <div class="sec-title">Status das Contas em Tempo Real</div>
+                <div class="accounts-grid" id="accounts-container">
+                    </div>
+            </div>
+        </div>
+
+        <div id="page-history" class="page">
+            <div class="main">
+                <div class="sec-title">Evolução de Processos</div>
+                <div class="card">
+                    <table class="ht">
+                        <thead>
+                            <tr><th>Conta</th><th>Alert</th><th>D1</th><th>D2 PM</th><th>D3 AM</th><th>D3 PM</th><th>D4 AM</th><th>D4 PM</th><th>Δ</th><th>Tend.</th></tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <span>DSV · Fashion Accounts Escalation</span>
+            <span class="footer-snap" id="snap-footer">📍 DATA ATUALIZADA VIA EXCEL</span>
+            <span>Confidential</span>
+        </footer>
+    </main>
+
+    <script>
+        // --- MOTOR DE PROCESSAMENTO DE DADOS ---
+        document.getElementById('excel-file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+
+                // Carregar Abas (Certifique-se que o Excel tenha estes nomes de abas)
+                const sheetGeral = XLSX.utils.sheet_to_json(workbook.Sheets['Geral']);
+                const sheetTimeline = XLSX.utils.sheet_to_json(workbook.Sheets['Timeline']);
+                const sheetContas = XLSX.utils.sheet_to_json(workbook.Sheets['Contas']);
+                const sheetDetalhes = XLSX.utils.sheet_to_json(workbook.Sheets['Detalhes']);
+                const sheetHistorico = XLSX.utils.sheet_to_json(workbook.Sheets['Historico']);
+
+                renderDashboard(sheetGeral[0], sheetTimeline, sheetContas, sheetDetalhes, sheetHistorico);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function renderDashboard(geral, timeline, contas, detalhes, historico) {
+            // Esconde upload e mostra dashboard
+            document.getElementById('upload-section').style.display = 'none';
+            document.getElementById('main-dashboard').style.display = 'block';
+
+            // 1. Renderizar Pills do Cabeçalho
+            document.getElementById('pills-container').innerHTML = `
+                <div class="sp red"><span class="dot"></span>${geral.RedCount} Red</div>
+                <div class="sp yellow"><span class="dot"></span>${geral.YellowCount} Yellow</div>
+                <div class="sp violet"><span class="dot"></span>${geral.SlowCount} Slow</div>
+                <div class="sp green"><span class="dot"></span>${geral.GreenCount} Green</div>
+            `;
+
+            // 2. Renderizar Timeline
+            document.getElementById('timeline-container').innerHTML = timeline.map(t => `
+                <div class="tl-node">
+                    <div class="tl-time ${t.Class}">${t.Time}</div>
+                    <div class="tl-dot ${t.Class}"></div>
+                    <div class="tl-label ${t.Class}">${t.Label}</div>
+                    <div class="tl-badge ${t.Class}">${t.Badge}</div>
+                    ${t.Delta ? `<div class="tl-delta ${t.DeltaClass}">${t.Delta}</div>` : ''}
+                </div>
+            `).join('');
+
+            // 3. Renderizar Sumário
+            document.getElementById('summary-container').innerHTML = `
+                <div class="sc total"><div class="sc-label">Total de Processos</div><div class="sc-row"><div class="sc-num">${geral.TotalProc}</div><div class="sc-delta down">${geral.DeltaTotal}</div></div><div class="sc-sub">${geral.ContasMonitoradas} contas monitoradas</div></div>
+                <div class="sc red"><div class="sc-label">Red Alert</div><div class="sc-num">${geral.RedCount}</div><div class="sc-sub">Ação imediata</div></div>
+                <div class="sc yellow"><div class="sc-label">Yellow Alert</div><div class="sc-num">${geral.YellowCount}</div><div class="sc-sub">Atenção elevada</div></div>
+                <div class="sc viol"><div class="sc-label">Lenta</div><div class="sc-num">${geral.SlowCount}</div><div class="sc-sub">Abaixo do esperado</div></div>
+                <div class="sc green"><div class="sc-label">Green</div><div class="sc-num">${geral.GreenCount}</div><div class="sc-sub">Estável</div></div>
+            `;
+
+            // 4. Renderizar Contas
+            document.getElementById('accounts-container').innerHTML = contas.map(c => {
+                // Filtra detalhes para esta conta específica
+                const dsvLast = detalhes.filter(d => d.ContaNome === c.Nome && d.Ofensor === 'DSV' && d.Tipo === 'Last');
+                const dsvCurr = detalhes.filter(d => d.ContaNome === c.Nome && d.Ofensor === 'DSV' && d.Tipo === 'Current');
+                const multLast = detalhes.filter(d => d.ContaNome === c.Nome && d.Ofensor === 'MULT' && d.Tipo === 'Last');
+                const multCurr = detalhes.filter(d => d.ContaNome === c.Nome && d.Ofensor === 'MULT' && d.Tipo === 'Current');
+                const cliLast = detalhes.filter(d => d.ContaNome === c.Nome && d.Ofensor === 'CLI' && d.Tipo === 'Last');
+                const cliCurr = detalhes.filter(d => d.ContaNome === c.Nome && d.Ofensor === 'CLI' && d.Tipo === 'Current');
+
+                return `
+                <div class="ac ${c.Alerta}" onclick="toggle(this)">
+                    <div class="ac-header">
+                        <div class="ac-name-cell">
+                            <div class="badge ${c.Alerta}">${c.Alerta.substring(0,3).toUpperCase()}</div>
+                            <div><div class="ac-name">${c.Nome}</div><div class="ac-status-line">${c.Subtitulo}</div></div>
+                        </div>
+                        <div class="ac-offense-cell">
+                            <div class="off-badge dsv"><span>DSV</span><span class="off-num">${c.DSV_Qtd}</span><span class="off-trend">${c.DSV_Trend}</span></div>
+                            <div class="off-badge mult"><span>MULT</span><span class="off-num">${c.Mult_Qtd}</span><span class="off-trend">${c.Mult_Trend}</span></div>
+                            <div class="off-badge cli"><span>CLI</span><span class="off-num">${c.Cli_Qtd}</span><span class="off-trend">${c.Cli_Trend}</span></div>
+                        </div>
+                        <div class="ac-count-cell">
+                            <div class="count-num">${c.Total}</div>
+                            <div class="count-trend-block"><div class="count-delta">${c.Delta}</div></div>
+                        </div>
+                        <div class="ac-toggle">▾</div>
+                    </div>
+                    <div class="ac-body">
+                        ${c.Meta_Titulo ? `
+                        <div class="kt">
+                            <div class="kt-h"><span class="kt-title">${c.Meta_Titulo}</span></div>
+                            <div class="kt-track"><div class="kt-fill" data-w="${c.Meta_W}"></div></div>
+                            <div style="font-size:10px; color:var(--muted); margin-top:5px;">${c.Meta_Texto}</div>
+                        </div>` : ''}
+                        <div class="offense-grid">
+                            ${renderOffenseCol('DSV', dsvLast, dsvCurr)}
+                            ${renderOffenseCol('MULT', multLast, multCurr)}
+                            ${renderOffenseCol('CLI', cliLast, cliCurr)}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // 5. Renderizar Tabela de Histórico
+            document.getElementById('history-table-body').innerHTML = historico.map(h => `
+                <tr>
+                    <td style="font-weight:700">${h.Conta}</td>
+                    <td><span class="htag ${h.AlertClass}">${h.Alert}</span></td>
+                    <td>${h.D1}</td>
+                    <td>${h.D2PM}</td>
+                    <td>${h.D3AM}</td>
+                    <td>${h.D3PM}</td>
+                    <td>${h.D4AM}</td>
+                    <td>${h.D4PM}</td>
+                    <td style="font-weight:700">${h.Delta}</td>
+                    <td><div class="tbar"><div class="tb" style="background:${h.Color}" data-w="${h.TrendW}"></div></div></td>
+                </tr>
+            `).join('');
+
+            // Trigger para as barras de progresso
+            setTimeout(() => {
+                document.querySelectorAll('[data-w]').forEach(el => {
+                    el.style.width = el.getAttribute('data-w');
+                });
+            }, 350);
+        }
+
+        // Sub-função para renderizar colunas de ofensores
+        function renderOffenseCol(label, lastArr, currArr) {
+            const classOf = label.toLowerCase();
+            return `
+            <div class="offense-col">
+                <div class="offense-header"><span class="offense-title ${classOf}">${label}</span></div>
+                <div class="status-split">
+                    <div class="status-pane last">
+                        <div class="spl"><span class="spl-ref">AM</span></div>
+                        <ul class="proc-list">${lastArr.map(p => `<li class="pi"><span class="pn">${p.Qtd}</span>${p.Texto}</li>`).join('')}</ul>
+                    </div>
+                    <div class="status-pane current">
+                        <div class="spl"><span class="spl-ref">PM</span></div>
+                        <ul class="proc-list">${currArr.map(p => `<li class="pi ${classOf}"><span class="pn">${p.Qtd}</span>${p.Texto}</li>`).join('')}</ul>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function setPage(p, btn) {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('page-' + p).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function toggle(card) { card.classList.toggle('open'); }
+    </script>
+</body>
+</html>
