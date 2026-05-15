@@ -1,2 +1,0 @@
-# Painel-Luiza
-Painel Luiza
